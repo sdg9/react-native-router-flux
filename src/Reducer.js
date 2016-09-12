@@ -170,6 +170,63 @@ function inject(state, action, props, scenes) {
 
       return { ...state, children: state.children };
     }
+    case ActionConst.POP_AND_PUSH: {
+      assert(!state.tabs, 'pop() operation cannot be run on tab bar (tabs=true)');
+      assert(state.index > 0, 'You are already in the root scene.');
+
+      let popNum = 1;
+      if (action.popNum) {
+        assert(typeof(action.popNum) === 'number',
+          'The data is the number of scenes you want to pop, it must be Number');
+        popNum = action.popNum;
+        assert(popNum % 1 === 0,
+          'The data is the number of scenes you want to pop, it must be integer.');
+        assert(popNum > 1,
+          'The data is the number of scenes you want to pop, it must be bigger than 1.');
+        assert(popNum <= state.index,
+          'The data is the number of scenes you want to pop, ' +
+          "it must be smaller than scenes stack's length.");
+      }
+
+      //pop
+      state = {
+        ...state,
+        index: state.index - popNum,
+        from: state.children[state.children.length - popNum],
+        children: state.children.slice(0, -1 * popNum),
+      };
+      // if (state.children[state.index].sceneKey === action.key) {
+      //   return state;
+      // }
+      if (state.children[state.index].sceneKey === action.key && !props.clone
+        && checkPropertiesEqual(action, state.children[state.index])) {
+        return state;
+      }
+
+      const newAction = {
+        duration: 0,  // do not animate
+        ...action,
+      };
+      delete newAction.popNum;
+
+      const newProps = { ...props };
+      delete newProps.popNum;
+
+      // state.children[state.children.length - 1] = getInitialState(
+      //   newProps,
+      //   scenes,
+      //   state.index,
+      //   newAction
+      // );
+      return {
+        ...state,
+        index: state.index + 1,
+        from: null,
+        children: [...state.children, getInitialState(props, scenes, state.index + 1, action)],
+      };
+
+      // return { ...state, children: state.children };
+    }
     case ActionConst.REFRESH:
       return props.base ?
       { navBar: state.navBar,
